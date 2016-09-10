@@ -37,6 +37,7 @@ import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -45,6 +46,9 @@ import java.util.concurrent.TimeUnit;
  * low-bit ambient mode, the text is drawn without anti-aliasing in ambient mode.
  */
 public class WatchFace extends CanvasWatchFaceService {
+
+    private static final String LOG_TAG = WatchFace.class.getSimpleName();
+
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
 
@@ -91,6 +95,7 @@ public class WatchFace extends CanvasWatchFaceService {
         Paint mTextPaint;
         boolean mAmbient;
         Calendar mCalendar;
+        Date mDate;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -257,12 +262,11 @@ public class WatchFace extends CanvasWatchFaceService {
             // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
-
             String text = mAmbient
                     ? String.format("%d:%02d", mCalendar.get(Calendar.HOUR),
                     mCalendar.get(Calendar.MINUTE))
-                    : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
+            :String.format("%d:%02d", mCalendar.get(Calendar.HOUR),
+                    mCalendar.get(Calendar.MINUTE));
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
         }
 
