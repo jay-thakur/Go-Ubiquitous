@@ -24,6 +24,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.format.Time;
@@ -36,6 +38,15 @@ import com.appniche.android.sunshine.app.R;
 import com.appniche.android.sunshine.app.Utility;
 import com.appniche.android.sunshine.app.data.WeatherContract;
 import com.appniche.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,13 +60,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Date;
 import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 
-public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
+public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     public static final String ACTION_DATA_UPDATED =
-            "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
+            "com.appniche.android.sunshine.app.ACTION_DATA_UPDATED";
     // Interval at which to sync with the weather, in seconds.
     // 60 seconds (1 minute) * 180 = 3 hours
     public static final int SYNC_INTERVAL = 60 * 180;
@@ -87,8 +99,16 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public static final int LOCATION_STATUS_UNKNOWN = 3;
     public static final int LOCATION_STATUS_INVALID = 4;
 
+    private GoogleApiClient mGoogleApiClient;
+
     public SunshineSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
+        mGoogleApiClient = new GoogleApiClient.Builder(context)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(Wearable.API)
+                .build();
+        mGoogleApiClient.connect();
     }
 
     @Override
@@ -344,6 +364,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                         WeatherContract.WeatherEntry.COLUMN_DATE + " <= ?",
                         new String[] {Long.toString(dayTime.setJulianDay(julianStartDay-1))});
 
+                updateWearable();
                 updateWidgets();
                 updateMuzei();
                 notifyWeather();
@@ -355,6 +376,52 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
             setLocationStatus(getContext(), LOCATION_STATUS_SERVER_INVALID);
+        }
+    }
+    private void updateWearable(){
+        Log.d(LOG_TAG,"updateWearable method called");
+        Context context = getContext();
+
+        String highTemp = "0";
+        String lowTemp = "0";
+        int weatherId = 0;
+
+        String locationQuery = Utility.getPreferredLocation(context);
+        Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
+
+        Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+        if (cursor.moveToFirst()) {
+            weatherId = cursor.getInt(INDEX_WEATHER_ID);
+            highTemp = cursor.getString(INDEX_MAX_TEMP);
+            lowTemp = cursor.getString(INDEX_MIN_TEMP);
+
+            Log.d(LOG_TAG, "Cursor data: "+highTemp+" "+lowTemp+" "+weatherId);
+        }
+
+        if(mGoogleApiClient.isConnected()) {
+            Log.d(LOG_TAG, "mGoogleApiClient connection found!");
+            PutDataMapRequest putRequest = PutDataMapRequest.create("/wearable").setUrgent();
+            putRequest.getDataMap().putString("high", highTemp);
+            putRequest.getDataMap().putString("low", lowTemp);
+            putRequest.getDataMap().putInt("id",weatherId);
+            putRequest.getDataMap().putInt("value", (int) System.currentTimeMillis());
+            //putRequest.getDataMap().putLong("timestamp", new Date().getTime());
+
+            PutDataRequest request=putRequest.asPutDataRequest();
+            Wearable.DataApi.putDataItem(mGoogleApiClient, request)
+                    .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                        @Override
+                        public void onResult(DataApi.DataItemResult dataItemResult) {
+                            if (!dataItemResult.getStatus().isSuccess()) {
+                                Log.v(LOG_TAG, "data failed to send");
+                            } else {
+                                Log.v(LOG_TAG, "data sent successfully");
+                            }
+                        }
+                    });
+        }
+        else{
+            Log.e(LOG_TAG, "mGoogleApiClient connection NOT found!");
         }
     }
 
@@ -635,5 +702,21 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         SharedPreferences.Editor spe = sp.edit();
         spe.putInt(c.getString(R.string.pref_location_status_key), locationStatus);
         spe.commit();
+    }
+
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.d(LOG_TAG, "Google Api client CONNECTED");
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.d(LOG_TAG, "Google Api Client Connection SUSPENDED");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d(LOG_TAG, "Google Api client Connection FAILED");
     }
 }
