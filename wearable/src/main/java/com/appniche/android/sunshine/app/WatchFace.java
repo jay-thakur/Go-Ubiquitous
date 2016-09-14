@@ -394,7 +394,7 @@ public class WatchFace extends CanvasWatchFaceService {
         public void onDataChanged(DataEventBuffer dataEventBuffer) {
             Log.d(LOG_TAG, "inside onDataChanged ");
             for (DataEvent dataEvent : dataEventBuffer) {
-                if (dataEvent.getType() != DataEvent.TYPE_CHANGED) {
+                if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
                     DataItem dataItem = dataEvent.getDataItem();
                     if (dataItem.getUri().getPath().equals("/wearable")) {
                         DataMap dataMap = DataMapItem.fromDataItem(dataItem).getDataMap();
@@ -405,7 +405,7 @@ public class WatchFace extends CanvasWatchFaceService {
                         mHighTemp = String.format("%3s",String.valueOf(mHighTemp)) + "°C";
                         mLowTemp = String.format("%3s",String.valueOf(mLowTemp)) + "°C";
 
-                        Log.d("WATCH_DATA", "\nHigh: " + mHighTemp + "\nLow: " + mLowTemp + "\nID: " + mWeatherId);
+                        Log.d("WATCH_DATA", "High: " + mHighTemp + " Low: " + mLowTemp + " ID: " + mWeatherId);
                         invalidate();
                     }
                 }
