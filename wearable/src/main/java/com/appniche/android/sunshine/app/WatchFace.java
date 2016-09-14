@@ -336,8 +336,8 @@ public class WatchFace extends CanvasWatchFaceService {
 
             if (!mAmbient) {
                 canvas.drawText(mHighTemp, mXOffset+10, mYOffset + 2 * mLineOffset, mLightTextPaint);
-                canvas.drawBitmap(weather, mXOffset + 60, mYOffset + mLineOffset, mTextPaint);
-                canvas.drawText(mLowTemp, mXOffset + 80 + mLightTextPaint.measureText(mHighTemp),mYOffset + 2 * mLineOffset, mLightTextPaint);
+                canvas.drawBitmap(weather, mXOffset+70, mYOffset + mLineOffset, mTextPaint);
+                canvas.drawText(mLowTemp, mXOffset+90 + mLightTextPaint.measureText(mHighTemp),mYOffset + 2 * mLineOffset, mLightTextPaint);
             }
 
         }

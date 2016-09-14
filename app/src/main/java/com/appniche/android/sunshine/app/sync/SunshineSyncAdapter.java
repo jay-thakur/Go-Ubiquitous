@@ -392,8 +392,8 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
         Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
         if (cursor.moveToFirst()) {
             weatherId = cursor.getInt(INDEX_WEATHER_ID);
-            highTemp = cursor.getString(INDEX_MAX_TEMP);
-            lowTemp = cursor.getString(INDEX_MIN_TEMP);
+            highTemp = String.valueOf(cursor.getInt(INDEX_MAX_TEMP));
+            lowTemp = String.valueOf(cursor.getInt(INDEX_MIN_TEMP));
 
             Log.d(LOG_TAG, "Cursor data: "+highTemp+" "+lowTemp+" "+weatherId);
         }
